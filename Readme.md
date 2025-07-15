@@ -169,7 +169,7 @@ import { generateEmbeddingFromProduct } from "./utils/pinecone/embeddings.js";
 
 const product = {
   name: "Desk Lamp",
-  company: "Illuminate Co.",
+  company: "Lightning Co.",
   type: "lamp",
   areaOfUse: "indoor",
   description: "A sleek modern desk lamp.",
