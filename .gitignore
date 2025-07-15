@@ -1,0 +1,50 @@
+# Node modules
+node_modules/
+
+# Build outputs
+dist/
+build/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.*.local
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Optional: ignore tests output
+coverage/
+
+# Optional: ignore Redis / DB / local services
+*.pid
+*.db
+*.sqlite
+*.rdb
+
+# Optional: compiled or temp files
+*.tsbuildinfo
+*.tgz
+*.zip
+*.bak
+*.tmp
+
+# Ignore Git backup files
+*.orig
+
+# Ignore lock files (optional – if you're not committing them)
+# package-lock.json
+# yarn.lock
