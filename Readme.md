@@ -44,7 +44,7 @@ A full-stack AI-powered eCommerce framework integrating a Model Context Protocol
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/your-org/Bytecraft-MCP_with_client.git
+   git clone https://github.com/Ashishmehta108/Bytecraft-MCP_with_client.git
    cd Bytecraft-MCP_with_client
    ```
 
@@ -94,7 +94,7 @@ GEMINI_API=your-google-genai-key
 2. Start the server:
 
    ```bash
-   npm start
+   npm run dev
    # or
    node dist/index.js
    ```
@@ -118,7 +118,7 @@ GEMINI_API=your-google-genai-key
 2. Start the client:
 
    ```bash
-   npm start
+   npm run dev
    ```
 
 3. **Chat Endpoint**:
@@ -215,6 +215,3 @@ Use these embeddings to seed your Pinecone index during data ingestion.
 
 ---
 
-## 📜 License
-
-MIT License. See [LICENSE](LICENSE) for details.
