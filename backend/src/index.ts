@@ -11,7 +11,12 @@ import { z } from "zod";
 import prisma from "../utils/db.js";
 const app = express();
 app.use(express.json());
-app.use(cors({ origin: "*", credentials: true }));
+app.use(
+  cors({
+    origin: process.env.MCP_CLIENT || "http://localhost:5500",
+    credentials: true,
+  })
+);
 
 process.on("uncaughtException", (err) => {
   console.error("Uncaught Exception:", err);
@@ -23,6 +28,32 @@ process.on("unhandledRejection", (reason) => {
 
 const transports: Record<string, StreamableHTTPServerTransport> = {};
 const server = new McpServer({ name: "Bytecraft-mcp", version: "1.0.0" });
+import "dotenv/config";
+import { GoogleGenAI } from "@google/genai";
+import { Pinecone } from "@pinecone-database/pinecone";
+const pinecone = new Pinecone({
+  apiKey: process.env.PINECONE_API!,
+});
+
+const prodIndex = pinecone.Index("my-prod").namespace("prod-namespace");
+
+const searchVector = async (query: string) => {
+  const vector = await new GoogleGenAI({
+    apiKey: process.env.GOOGLE_GEMINI_API_KEY,
+  }).models.embedContent({
+    model: "text-embedding-004",
+    contents: [query],
+  });
+  if (!vector.embeddings) throw new Error("No embeddings found");
+  console.log(vector.embeddings[0].values);
+  const res = await prodIndex.query({
+    vector: vector.embeddings[0].values as number[],
+    topK: 2,
+    includeMetadata: true,
+  });
+  console.log(res);
+  return res.matches;
+};
 
 server.registerTool(
   "ExtractDetailsFromthePrompt",
@@ -294,6 +325,47 @@ server.registerTool(
 );
 
 server.registerTool(
+  "moreContextFromQuery",
+  {
+    description:
+      "Get more context from a natural language query using vector db query.The llm calls it and then gets the most matching results and based upon the user context it should return the user best product based on their needs.",
+    inputSchema: {
+      query: z
+        .string()
+        .nonempty()
+        .describe(
+          "A user prompt like 'Show me all outdoor lamps and give details for the first one'."
+        ),
+    },
+  },
+  async ({ query }) => {
+    console.log("[Tool Called] moreContextFromQuery with query:", query);
+    try {
+      const res = await searchVector(query);
+      return {
+        content: [
+          {
+            type: "text",
+            text:
+              "these are the most matching results of thee query from the database " +
+              JSON.stringify(res),
+          },
+        ],
+      };
+    } catch (error: any) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error getting more context: ${error.message}`,
+          },
+        ],
+      };
+    }
+  }
+);
+
+server.registerTool(
   "clearCart",
   {
     description:
@@ -391,6 +463,10 @@ app.get("/mcp", async (req: Request, res: Response) => {
   await transports[sessionId].handleRequest(req, res);
 });
 
+app.get("/", async (req: Request, res: Response) => {
+  res.send("hello from aira's core backend");
+});
+
 app.delete("/mcp", async (req: Request, res: Response) => {
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
   if (!sessionId || !transports[sessionId]) {
@@ -400,6 +476,9 @@ app.delete("/mcp", async (req: Request, res: Response) => {
   await transports[sessionId].handleRequest(req, res);
 });
 
+app.get("/", (req: Request, res: Response) => {
+  res.send("Hello from Bytecraft-mcp server");
+});
 // ────── Start ──────
 const PORT = process.env.PORT ?? 3001;
 app.listen(PORT, () => {

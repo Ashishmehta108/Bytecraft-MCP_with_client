@@ -13,6 +13,7 @@
   "dependencies": {
     "@google/genai": "^1.6.0",
     "@modelcontextprotocol/sdk": "^1.12.1",
+    "@pinecone-database/pinecone": "^6.1.1",
     "@prisma/client": "^6.9.0",
     "@supabase/supabase-js": "^2.50.0",
     "@types/cors": "^2.8.19",

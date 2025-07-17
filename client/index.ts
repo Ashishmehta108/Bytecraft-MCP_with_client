@@ -1,5 +1,4 @@
-configDotenv();
-import { configDotenv } from "dotenv";
+import "./utils/env.js";
 import { marked } from "marked";
 import TerminalRenderer from "marked-terminal";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -10,7 +9,6 @@ import cors from "cors";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { loadMcpTools } from "@langchain/mcp-adapters";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { searchVector } from "./utils/pinecone/pinecone.search.js";
 marked.setOptions({ renderer: new (TerminalRenderer as any)() as any });
 const app = express();
 app.use(express.json());
@@ -25,8 +23,13 @@ async function addToHistory(userId: string, role: string, text: string) {
   await redis.rPush(userId, JSON.stringify({ role, text }));
   await redis.lTrim(userId, -MAX_HISTORY, -1);
 }
+
+async function clearHistory(userId: string) {
+  await redis.lTrim(userId, 1, 0); // or await redis.del(userId);
+}
+
 const gemini = new ChatGoogleGenerativeAI({
-  model: "gemini-2.5-flash-lite-preview-06-17",
+  model: "gemini-2.5-flash",
   apiKey: process.env.GEMINI_API,
 });
 
@@ -40,25 +43,36 @@ async function getHistory(userId: string) {
     }));
 }
 
+app.get("/deleteChat/:id", async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const clearChat = await clearHistory(userId);
+    res.json({
+      message: "chat is cleared ",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Could not get history from server error" });
+  }
+});
+
+app.get("/getUserHistory/:id", async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const history = await getHistory(userId);
+    res.json(history);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Could not get history from server error" });
+  }
+});
+
 app.post("/chat", async (req, res) => {
   const query = req.body.query;
   const userId = req.body.userId;
-  const vectorSearch = await searchVector(query);
   let finalReply = null;
   await addToHistory(userId, "user", query);
   let history = await getHistory(userId);
-  if (vectorSearch.length > 0) {
-    history.push({
-      role: "model",
-      parts: [
-        {
-          text: `more  context of the query from the database comes out to be  ${JSON.stringify(
-            vectorSearch
-          )} and userId is ${userId} `,
-        },
-      ],
-    });
-  }
   const tools = await loadMcpTools("Bytecraft-mcp", mcpClient);
   const agent = createReactAgent({
     llm: gemini,
@@ -75,6 +89,7 @@ app.post("/chat", async (req, res) => {
       User ID is: ${userId}
       history of conversation with the user is  : ${JSON.stringify(history)}
       Stop when the required task is completed for eg if user asks to buy a product then stop and give response that product is added to the cart and also recommend similar products and be gentle with the user.
+      If you updated something in user cart add,delete,change then in the last messaege of your chain add updated word
 `;
   const response = await agent.invoke({
     messages: [
@@ -82,11 +97,13 @@ app.post("/chat", async (req, res) => {
       { role: "user", content: query },
     ],
   });
+  console.log(response);
   const agentLength = response.messages.length;
   finalReply = response.messages[agentLength - 1].content as string;
   await addToHistory(userId, "model", finalReply!);
   return res.json({ finalReply });
 });
+console.log(process.env.PORT);
 
 app.listen(process.env.PORT || 5500, () => {
   console.log(`Server started on port ${process.env.PORT}`);

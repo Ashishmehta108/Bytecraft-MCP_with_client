@@ -11,6 +11,6 @@
     "strict": true,
     "noEmit": false
   },
-  "include": ["src/index.ts"],
+  "include": ["src","utils","prisma"],
   "exclude": ["node_modules"]
 }
